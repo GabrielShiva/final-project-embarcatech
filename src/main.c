@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h> 
+#include <math.h>
+
 #include "pico/stdlib.h"
+
+#include "hardware/adc.h"
+#include "hardware/dma.h"
+
 #include "inc/display/display.h"
 
 // Definição de parâmetros para o protocolo I2C
@@ -14,6 +20,9 @@
 #define BTN_A 5
 #define BTN_B 6
 #define BTN_SW 22
+
+// Define o pino do microfone
+#define MIC 28
 
 // Define constantes para representar as telas
 #define PAGE_MENU 0

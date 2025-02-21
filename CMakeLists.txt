@@ -56,6 +56,8 @@ target_include_directories(final_project_embarcatech PRIVATE
 # Add any user requested libraries
 target_link_libraries(final_project_embarcatech 
         hardware_i2c
+        hardware_adc
+        hardware_dma
         )
 
 pico_add_extra_outputs(final_project_embarcatech)
