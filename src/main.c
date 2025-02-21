@@ -17,6 +17,8 @@
 #define BTN_B 6
 #define BTN_SW 22
 
+volatile bool btn_a_state = true;
+
 volatile uint32_t last_time_btn_press = 0;
 volatile uint16_t current_db_value = 10;
 char db_string[10];
@@ -158,6 +160,11 @@ void draw_plus_btn() {
     ssd1306_hline(&ssd, 107, 118, 36, false);
 }
 
+void draw_on_led_btn() {
+    // box
+    ssd1306_rect(&ssd, 108, 28, 16, 16, true, btn_a_state);
+}
+
 void draw_minus_btn() {
     // box
     ssd1306_rect(&ssd, 11, 28, 16, 16, true, true);
@@ -191,6 +198,8 @@ void irq_handler(uint gpio, uint32_t events) {
                     current_db_value = current_db_value - 1;
                     printf("db: %d\n", current_db_value);
                 }
+            } else if (current_screen == 3) {
+                btn_a_state = !btn_a_state;
             }
         } else if (gpio == BTN_B) {
             if (current_screen == 0) {
@@ -202,7 +211,7 @@ void irq_handler(uint gpio, uint32_t events) {
                     current_db_value = current_db_value + 1;
                     printf("db: %d\n", current_db_value);
                 }
-            }
+            } 
         } else if (gpio == BTN_SW) {
             if (current_screen == 0) {
                 if (current_menu_item == 0) {
@@ -294,8 +303,18 @@ int main() {
             ssd1306_draw_string(&ssd, db_string, 44, 33);
             ssd1306_send_data(&ssd);
         } else if (current_screen == 3) { // configuração
-            ssd1306_rect(&ssd, 0, 14, 128, 50, false, true);
+            ssd1306_rect(&ssd, 0, 14, 128, 50, false, true);   
             draw_back_arrow();
+            draw_on_led_btn();
+
+            if (btn_a_state) {
+                ssd1306_draw_string(&ssd, "LED LIGADO", 0, 33); // valor medido em tempo real
+            } else {
+                ssd1306_draw_string(&ssd, "LED DESLIGADO", 0, 33); // valor medido em tempo real
+            }
+
+
+            ssd1306_draw_string(&ssd, "PRESS A", 0, 55); // valor medido em tempo real
             ssd1306_send_data(&ssd);
         }
 
