@@ -7,6 +7,7 @@
 #include "hardware/adc.h"
 
 #include "inc/display/display.h"
+#include "inc/matriz/neopixel.h"
 
 // Definição de parâmetros para o protocolo I2C
 #define I2C_ID i2c1
@@ -19,6 +20,10 @@
 #define BTN_A 5
 #define BTN_B 6
 #define BTN_SW 22
+
+// Pino e número de LEDs da matriz de LEDs.
+#define LED_PIN 7
+#define LED_COUNT 25
 
 // Define os pinos do microfone
 #define MIC_CHANNEL 2
@@ -58,18 +63,18 @@ static volatile uint current_screen = 0;
 volatile uint32_t last_time_btn_press = 0;
 
 // Define e inicializa a variável que armazena o valor limite em dB definido pelo usuáriu
-volatile uint db_value_boundary = 60;
+uint db_value_boundary = 60;
 
 // Define e inicializa, em dB, o valor medido pelo microfone MAX4466
-volatile uint db_value = 0;
+uint db_value = 0;
 
 // Define variável que armazena o texto que será exibido na página de visualização
 char db_string[10];
 char db_measured_string[10];
 
-volatile uint peak_to_peak = 0;
-volatile uint signal_max = 0;
-volatile uint signal_min = 4095;
+volatile uint16_t peak_to_peak = 0;
+volatile uint16_t signal_max = 0;
+volatile uint16_t signal_min = 4095;
 
 // Define e armazena o estado do botão A
 volatile bool btn_a_state = true;
@@ -79,8 +84,8 @@ const char *menu_itens[] = {
     "VIZUALIZAR", "DEF NIVEL", "CONFIGURAR"
 };
 
-const int sample_window = 50;  // Sample window width in mS (50 mS = 20Hz)
-unsigned int sample;
+const uint32_t sample_window = 50;  // Sample window width in mS (50 mS = 20Hz)
+uint16_t sample;
 
 // Configura e inicializa os botões
 void btn_setup(uint gpio) {
@@ -101,6 +106,13 @@ void peripheral_setup() {
     
     // Inicializa o display
     display_setup(SSD_1306_ADDR, I2C_ID);
+}
+
+// Configuração do ADC
+void adc_setup() {
+    adc_gpio_init(MIC_PIN);
+    adc_init();
+    adc_select_input(MIC_CHANNEL);
 }
 
 // Atualiza a barra de progresso
@@ -160,9 +172,6 @@ void call_page(uint page_selected) {
         // Cria a string que é exibida ao lado da barra de progresso. Exibe o valor medido em tempo real (dB)
         snprintf(db_measured_string, sizeof(db_measured_string), "%ddB", db_value);
         ssd1306_draw_string(&ssd, db_measured_string, 84, 25); 
-        
-        ssd1306_draw_string(&ssd, "MEDIANO", 0, 40);
-    
         ssd1306_send_data(&ssd);
     } else if (page_selected == PAGE_CONFIGURATION) {
         display_draw_back_arrow();
@@ -186,7 +195,7 @@ uint mic_measurement() {
     signal_max = 0;
     signal_min = 4095;
 
-    while(to_ms_since_boot(get_absolute_time()) - current_time < sample_window) {
+    while((to_ms_since_boot(get_absolute_time()) - current_time) < sample_window) {
         sample = adc_read();
 
         if (sample < 4095) {
@@ -202,14 +211,8 @@ uint mic_measurement() {
 }
 
 // Converte o valor pico a pico para dB
-uint convert_to_db(uint peak_to_peak) {
+uint convert_to_db(uint16_t peak_to_peak) {
     return ((uint) round(20.0 * log10((double) peak_to_peak)));   
-}
-  
-void adc_setup() {
-    adc_gpio_init(MIC_PIN);
-    adc_init();
-    adc_select_input(MIC_CHANNEL);
 }
 
 // Função que trata das interrupções geradas pelos botões
@@ -287,6 +290,16 @@ int main() {
     // Inicializa o ADC para o microfone
     adc_setup();
     sleep_ms(1500);
+
+    // Insere o texto de configuração da matriz de LEDs
+    ssd1306_rect(&ssd, 0, 14, 128, 50, false, true);
+    ssd1306_draw_string(&ssd, "Config Matriz", 5, 25); 
+    ssd1306_send_data(&ssd);
+
+    // Inicializa e limpa a matriz de LEDs
+    npInit(LED_PIN, LED_COUNT);
+    npClear();
+    sleep_ms(1500);
     
     snprintf(db_string, sizeof(db_string), "%udB", db_value_boundary);
 
@@ -307,20 +320,27 @@ int main() {
     while(true) {
         // Limpa o buffer da área principal
         display_clean_main_area();
-
         // Exibe a página atual na GUI
         call_page(current_screen);
-
         // Chama a função que atualiza o valor, em dB, que é exibido no cabeçalho
         ssd1306_rect(&ssd, 79, 1, 45, 11, false, true);
         snprintf(db_string, sizeof(db_string), "%udB", db_value_boundary);
         ssd1306_draw_string(&ssd, db_string, 83, 3);
-
         // Realiza a medição do microfone 
         peak_to_peak = mic_measurement();
         db_value = convert_to_db(peak_to_peak);
+        // Limpa a matriz de LEDs
+        npClear();
 
-        printf("Sound level: %d dB\n", db_value);
+        if (db_value > db_value_boundary && btn_a_state) {
+            for (uint i = 0; i < LED_COUNT; i++) {
+                npSetLED(i, 80, 0, 0);
+            }
+        }
+
+        // Escreve o buffer na matriz de LEDs
+        npWrite();
+        sleep_ms(80);
     }
 
     return 0;

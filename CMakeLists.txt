@@ -40,6 +40,9 @@ add_executable(final_project_embarcatech src/main.c inc/ssd1306/ssd1306.c)
 pico_set_program_name(final_project_embarcatech "final_project_embarcatech")
 pico_set_program_version(final_project_embarcatech "0.1")
 
+# Generate PIO header
+pico_generate_pio_header(final_project_embarcatech ${CMAKE_CURRENT_LIST_DIR}/ws2818b.pio)
+
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(final_project_embarcatech 1)
 pico_enable_stdio_usb(final_project_embarcatech 1)
@@ -57,6 +60,9 @@ target_include_directories(final_project_embarcatech PRIVATE
 target_link_libraries(final_project_embarcatech 
         hardware_i2c
         hardware_adc
+        hardware_clocks
+        hardware_pio
+        hardware_timer
         )
 
 pico_add_extra_outputs(final_project_embarcatech)

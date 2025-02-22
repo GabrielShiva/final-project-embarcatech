@@ -40,6 +40,7 @@
         "ssd1306.h": "c",
         "font.h": "c",
         "stdlib.h": "c",
-        "display.h": "c"
+        "display.h": "c",
+        "neopixel.h": "c"
     }
 }
